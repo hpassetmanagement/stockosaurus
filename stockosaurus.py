@@ -3,9 +3,20 @@ import numpy as np
 
 # Load Stock Data from CSV
 # Ensure your CSV file has a column 'DATES' and other columns as stock series
-file_path = 'stock_data.csv'
-stock_data = pd.read_csv(file_path, parse_dates=['DATES'])
-stock_data.set_index('DATES', inplace=True)
+file_path = 'stock_data_close.csv'
+stock_data_close = pd.read_csv(file_path, parse_dates=['DATES'])
+stock_data_close.set_index('DATES', inplace=True)
+
+# Load Open Price Data from CSV
+file_path_open = 'stock_data_open.csv'
+stock_data_open = pd.read_csv(file_path_open, parse_dates=['DATES'])
+stock_data_open.set_index('DATES', inplace=True)
+
+# Ensure that both dataframes have the same columns in the same order
+assert all(stock_data_close.columns == stock_data_open.columns), "Columns do not match"
+
+# Combine the close and open price data into a single DataFrame
+stock_data = pd.concat([stock_data_close, stock_data_open], keys=['Close', 'Open'], axis=1)
 
 # Trading Signals Function
 def generate_trading_signals_with_labels_and_stock_name_v3(data, stock_name,
@@ -43,6 +54,9 @@ def generate_trading_signals_with_labels_and_stock_name_v3(data, stock_name,
     signals['bollinger_positions'] = signals['bollinger_signal'].diff()
     signals['bollinger_action'] = signals['bollinger_positions'].apply(lambda x: 'Buy' if x == 1 else ('Sell' if x == -1 else 'Hold'))
 
+    # Add Open Price
+    signals['open_price'] = data['Open']
+
     # Add another signal column here
     # signals['signal'] = ...
     
@@ -52,8 +66,8 @@ def generate_trading_signals_with_labels_and_stock_name_v3(data, stock_name,
 all_signals = pd.DataFrame()
 
 # Generate Trading Signals for each stock series in the DataFrame
-for stock_name in stock_data.columns:
-    stock_series = pd.DataFrame(stock_data[stock_name].rename('Close'))
+for stock_name in stock_data['Close'].columns:
+    stock_series = stock_data.xs(key=stock_name, axis=1, level=1)
     signals = generate_trading_signals_with_labels_and_stock_name_v3(stock_series, stock_name)
     all_signals = pd.concat([all_signals, signals], axis=0)
 
